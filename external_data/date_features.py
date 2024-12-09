@@ -4,6 +4,8 @@ from astral.geocoder import LocationInfo
 from jours_feries_france import JoursFeries
 import pytz
 import numpy as np
+#from vacances_scolaires_france import SchoolHolidayDates
+from pathlib import Path
 
 
 
@@ -17,6 +19,60 @@ def assign_time_interval(hour):
         return 'peak_hours'
     else:
         return 'calm'
+
+def get_school_holidays(dates, cache_file='school_holidays_cache.pkl'):
+    """
+    Get school holiday information with improved error handling and NaN management
+    
+    Parameters:
+    -----------
+    dates : pandas.Series or pandas.DatetimeIndex
+        The dates to check for school holidays
+    cache_file : str, optional
+        Path to the cache file
+        
+    Returns:
+    --------
+    pandas.Series
+        Binary values indicating school holidays (1) or not (0)
+    """
+    try:
+        # Load from cache if available
+        if Path(cache_file).exists():
+            print("Loading school holidays from cache...")
+            holiday_dict = pd.read_pickle(cache_file)
+        else:
+            print("Calculating school holidays...")
+            school_holidays = SchoolHolidayDates()
+            
+            # Get unique dates to reduce computation
+            unique_dates = pd.Series(dates).dt.date.unique()
+            
+            # Create holiday dictionary
+            holiday_dict = {}
+            for date in unique_dates:
+                try:
+                    holiday_dict[date] = school_holidays.is_holiday_for_zone(date, 'C')
+                except:
+                    # If there's an error for a specific date, mark as non-holiday
+                    holiday_dict[date] = False
+            
+            # Save to cache
+            pd.to_pickle(holiday_dict, cache_file)
+        
+        # Map dates to holiday status
+        holiday_series = pd.Series(dates).dt.date.map(holiday_dict)
+        
+        # Handle NaN values before integer conversion
+        holiday_series = holiday_series.fillna(False)
+        
+        # Convert to int (False -> 0, True -> 1)
+        return holiday_series.astype(int)
+        
+    except Exception as e:
+        print(f"Warning: Error processing school holidays: {e}")
+        # Return default values (no holidays) if there's an error
+        return pd.Series(0, index=dates.index)
 
 def _encode_dates(X):
     X = X.copy()  # modify a copy of X
@@ -41,10 +97,12 @@ def _encode_dates(X):
     X = pd.get_dummies(X, columns=['time_interval'], prefix='time')
     
     # One-hot encoding for day_of_week and season
-    #X = pd.get_dummies(X, columns=['weekday', 'season'], prefix=['day', 'season'])
+    X = pd.get_dummies(X, columns=['weekday'], prefix=['day'])
 
     # Finally we can drop the original columns from the dataframe
-    return X.drop(columns=["date"])
+    #X = X.drop(columns=["date"])
+    
+    return X
 
 
 

@@ -48,25 +48,26 @@ def weather_cleaning(weather):
     # Drop columns with more than 1000 missing values
     columns_to_drop = weather.columns[weather.isnull().sum() > 1000]
     weather.drop(columns=columns_to_drop, inplace=True)
+    
+    
+    '''
+    weather = weather.drop(columns=['td', 'dd', 'hnuage1', 'vv', 'tend', 'rafper', 'rr24', 'pres',
+                              'pmer', 'ff', 'raf10', 'etat_sol', 'perssfrai', 'ww', 'numer_sta',
+                              'cod_tend', 'nnuage1', 'rr12', 'nbas', 'n', 'hbas', 'cl','rr6',
+                              'rr3', 'w1', 'rr1', 'ctype1', 'cm', 'w2', 'ch', 'ssfrai', 'per'])
+    '''
+    
+    # Only extracting the vital columns
+    
+    output = weather
+    output = output.drop(columns=['ssfrai', 'n', 'ff', 'perssfrai', 'hbas', 'nbas',
+                                  'w2', 'rr12', 'vv', 'rr6', 'cm', 'ctype1',
+                                  'cl', 'cod_tend', 'ht_neige', 'ch', 'per', 'numer_sta',
+                                  'dd', 'pres', 'pmer', 'hnuage1', 'td', 'rafper',
+                                  'u', 'raf10', 'rr24', 'nnuage1']) # proven to be useless
+    
+    return output
 
-    return weather
-
-
-def train_test_split_temporal(X, y, delta_threshold="30 days"):
-    """
-    Split the data into training and validation sets based on a temporal cutoff.
-    Args:
-        X (pd.DataFrame): Features with a `date` column.
-        y (pd.Series): Target variable.
-        delta_threshold (str): Time delta defining the validation cutoff.
-    Returns:
-        Tuple: X_train, y_train, X_valid, y_valid
-    """
-    cutoff_date = X["date"].max() - pd.Timedelta(delta_threshold)
-    mask = (X["date"] <= cutoff_date)
-    X_train, X_valid = X.loc[mask], X.loc[~mask]
-    y_train, y_valid = y[mask], y[~mask]
-    return X_train, y_train, X_valid, y_valid
 
 
 def _merge_external_data(X, external_data_path="../external_data/external_data.csv", merge_columns=None, additional_functions=None):
@@ -87,6 +88,7 @@ def _merge_external_data(X, external_data_path="../external_data/external_data.c
     external_data = pd.read_csv(file_path, parse_dates=["date"])
     # Function to clean this dataset. But it may be a different one for different datasets
     external_data = weather_cleaning(external_data)
+    
     # Ensure 'date' columns are in datetime format
     X = X.copy()
     external_data = external_data.copy()
@@ -94,8 +96,7 @@ def _merge_external_data(X, external_data_path="../external_data/external_data.c
     external_data['date'] = pd.to_datetime(external_data['date'])
 
     # Default to merging all columns except 'date' if not specified
-    if merge_columns is None:
-        merge_columns = [col for col in external_data.columns if col != "date"]
+    merge_columns = [col for col in external_data.columns if col != "date"]
 
     # Add a temporary index to restore original order later
     X["orig_index"] = np.arange(X.shape[0])
@@ -138,11 +139,6 @@ def get_estimator():
 
     return pipe
 
-def scaling(df):
-    scaler = StandardScaler()
-    columns_to_scale = ['']
-
-    df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
     
 def add_arrondissement(df):
     """
@@ -185,3 +181,36 @@ def add_arrondissement(df):
     df['arrondissement'] = df['site_name'].map(district_mapping)
     
     return df
+
+def defining_columns(X):
+    X = X.astype({
+    'latitude': 'float64',
+    'longitude': 'float64',
+    'site_id': 'category',
+    'is_bank_holiday': 'int8',
+    'year': 'int32',
+    'month': 'int32', 
+    'day': 'int32',
+    'weekday': 'int32',
+    'hour': 'int32',
+    'date': 'datetime64[ns]',
+    #'ff': 'float',
+    #'t': 'float',
+    #'u': 'float',
+    #'rr1': 'float',
+    #'raf10': 'float',
+    #'n': 'category',
+    #'ww': 'category',
+    'is_weekend': 'int8',
+    'season': 'category',
+    'hour_sin': 'float64',
+    'hour_cos': 'float64',
+    'day_sin': 'float64',
+    'day_cos': 'float64',
+    'time_calm': 'int8',
+    'time_morning': 'int8',
+    'time_peak_hours': 'int8',
+    'time_working_hours': 'int8',
+    'arrondissement': 'category'})
+
+    return X
