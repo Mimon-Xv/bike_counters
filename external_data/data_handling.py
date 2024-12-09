@@ -98,6 +98,9 @@ def _merge_external_data(X, external_data_path="../external_data/external_data.c
     # Default to merging all columns except 'date' if not specified
     merge_columns = [col for col in external_data.columns if col != "date"]
 
+    X['date'] = pd.to_datetime(X['date']).dt.tz_localize(None)
+    external_data['date'] = pd.to_datetime(external_data['date']).dt.tz_localize(None) # Add it to avoid tz error
+    
     # Add a temporary index to restore original order later
     X["orig_index"] = np.arange(X.shape[0])
 
