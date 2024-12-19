@@ -4,7 +4,7 @@ from astral.geocoder import LocationInfo
 from jours_feries_france import JoursFeries
 import pytz
 import numpy as np
-#from vacances_scolaires_france import SchoolHolidayDates
+from vacances_scolaires_france import SchoolHolidayDates
 from pathlib import Path
 
 
@@ -103,8 +103,6 @@ def _encode_dates(X):
     #X = X.drop(columns=["date"])
     
     return X
-
-
 
 
 # Long function but it is well optimized (80 s --> 10 s runtime !!)
